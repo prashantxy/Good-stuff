@@ -38,7 +38,8 @@ The user asked: "${question}"
 Here are some example rows from Trips: ${JSON.stringify(trips, null, 2)}
 Here are some example rows from Users: ${JSON.stringify(users, null, 2)}
 
-Use this schema to answer with SQL-like reasoning and a natural language explanation.
+Answer **only the final result**, in plain language, **without SQL or long explanations**.
+If you cannot determine a clear answer from the sample data, respond: "Not enough data to answer."
 `;
 
     const response = await model.generateContent(prompt);
