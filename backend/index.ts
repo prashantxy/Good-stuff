@@ -1,0 +1,61 @@
+import express, { type Request, type Response } from "express";
+import dotenv from "dotenv";
+import { PrismaClient } from "@prisma/client";
+import { GoogleGenerativeAI } from "@google/generative-ai";
+
+dotenv.config();
+
+const app = express();
+const prisma = new PrismaClient();
+app.use(express.json());
+
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
+const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+app.post("/query", async (req: Request, res: Response) => {
+  try {
+    const { question } = req.body;
+    if (!question) {
+      return res.status(400).json({ error: "Missing question in body" });
+    }
+
+    const trips = await prisma.trip.findMany({
+      take: 10,
+      include: { riders: { include: { user: true } } }, 
+    });
+
+    const users = await prisma.user.findMany({ take: 10 });
+
+    const prompt = `
+You are a data assistant for a ride-sharing company (Fetii).
+The database has:
+- Trip(id, booking_user_id, pickup_address, dropoff_address, pickup_time, dropoff_time, riders_count)
+- Rider(trip_id, user_id)
+- User(id, age)
+
+The user asked: "${question}"
+
+Here are some example rows from Trips: ${JSON.stringify(trips, null, 2)}
+Here are some example rows from Users: ${JSON.stringify(users, null, 2)}
+
+Use this schema to answer with SQL-like reasoning and a natural language explanation.
+`;
+
+    const response = await model.generateContent(prompt);
+    const answer = response.response.text();
+
+    res.json({ question, answer });
+  } catch (err) {
+    console.error("Error in /query:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+app.get("/", (_req: Request, res: Response) => {
+  res.send(" FetiiAI server is running!");
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on http://localhost:${PORT}`);
+});
