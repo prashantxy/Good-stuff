@@ -4,11 +4,9 @@ import path from "path";
 
 const prisma = new PrismaClient();
 
-// Function to parse Excel date (handles both serial numbers and string dates)
 function parseExcelDate(value: any) {
   if (!value) return null;
   if (typeof value === "number") {
-    // Excel serial number -> JS Date
     return new Date(Math.round((value - 25569) * 86400 * 1000));
   }
   const date = new Date(value);
