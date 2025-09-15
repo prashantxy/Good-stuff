@@ -39,7 +39,7 @@ Here are some example rows from Trips: ${JSON.stringify(trips, null, 2)}
 Here are some example rows from Users: ${JSON.stringify(users, null, 2)}
 
 Answer **only the final result**, in plain language, **without SQL or long explanations**.
-If you cannot determine a clear answer from the sample data, respond: "Not enough data to answer."
+You need to anyhow answer the question be it in any way process the data properly using the SQL query and make the  
 `;
 
     const response = await model.generateContent(prompt);
