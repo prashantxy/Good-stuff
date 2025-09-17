@@ -1,16 +1,13 @@
 import express, { type Request, type Response } from "express";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { callGeminiWithRetry } from "./utils/gemini";
 
 dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
 app.use(express.json());
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
 
 app.post("/query", async (req: Request, res: Response) => {
   try {
@@ -21,7 +18,7 @@ app.post("/query", async (req: Request, res: Response) => {
 
     const trips = await prisma.trip.findMany({
       take: 10,
-      include: { riders: { include: { user: true } } }, 
+      include: { riders: { include: { user: true } } },
     });
 
     const users = await prisma.user.findMany({ take: 10 });
@@ -38,12 +35,10 @@ The user asked: "${question}"
 Here are some example rows from Trips: ${JSON.stringify(trips, null, 2)}
 Here are some example rows from Users: ${JSON.stringify(users, null, 2)}
 
-Answer **only the final result**, in plain language, **without SQL or long explanations**.
-You need to anyhow answer the question be it in any way process the data properly using the SQL query and make the   
-`;
+Answer only the final result, in plain language, without SQL or long explanations.
+    `;
 
-    const response = await model.generateContent(prompt);
-    const answer = response.response.text();
+    const answer = await callGeminiWithRetry(prompt);
 
     res.json({ question, answer });
   } catch (err) {
@@ -53,10 +48,10 @@ You need to anyhow answer the question be it in any way process the data properl
 });
 
 app.get("/", (_req: Request, res: Response) => {
-  res.send(" FetiiAI server is running!");
+  res.send("🚖 FetiiAI server is running!");
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`✅ Server running on http://localhost:${PORT}`);
 });
