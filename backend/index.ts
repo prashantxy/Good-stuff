@@ -1,7 +1,7 @@
 import express, { type Request, type Response } from "express";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
-import { callGeminiWithRetry } from "./utils/gemini";
+import { callGeminiWithRetry } from "./utils/gemini.ts";
 
 dotenv.config();
 
@@ -53,5 +53,5 @@ app.get("/", (_req: Request, res: Response) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`✅ Server running on http://localhost:${PORT}`);
+  console.log(` Server running on http://localhost:${PORT}`);
 });

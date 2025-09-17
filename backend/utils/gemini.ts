@@ -10,13 +10,13 @@ export async function callGeminiWithRetry(prompt: string, retries = 3): Promise<
       return response.response.text();
     } catch (err: any) {
       if (err.status === 429 && i < retries - 1) {
-        const waitTime = 60000; // 1 min backoff
-        console.warn(`⚠️ Rate limit hit. Retrying in ${waitTime / 1000}s...`);
+        const waitTime = 60000; 
+        console.warn(` Rate limit hit. Retrying in ${waitTime / 1000}s...`);
         await new Promise((resolve) => setTimeout(resolve, waitTime));
       } else {
         throw err;
       }
     }
   }
-  throw new Error("❌ Max retries reached for Gemini API.");
+  throw new Error(" Max retries reached for Gemini API.");
 }
