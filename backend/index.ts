@@ -1,4 +1,5 @@
 import express, { type Request, type Response } from "express";
+import cors from "cors";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import { callGeminiWithRetry } from "./utils/gemini.ts";
@@ -7,75 +8,357 @@ dotenv.config();
 
 const app = express();
 const prisma = new PrismaClient();
-app.use(express.json());
+
+// Enhanced CORS configuration
+app.use(cors({
+  origin: [
+    'http://localhost:3001', 
+  ],
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
+
+app.use(express.json({ limit: '10mb' }));
+
+async function getSmartDataContext(question: string) {
+  const questionLower = question.toLowerCase();
+  
+  let tripsQuery: any = {
+    take: 100,
+    include: { 
+      riders: { 
+        include: { 
+          user: {
+            select: {
+              id: true,
+              age: true,
+             
+            }
+          } 
+        } 
+      } 
+    },
+    orderBy: { pickup_time: 'desc' }
+  };
+
+  if (questionLower.includes('peak') || questionLower.includes('hour') || questionLower.includes('time')) {
+   
+    tripsQuery.where = {
+      pickup_time: {
+        gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) 
+      }
+    };
+    tripsQuery.take = 200;
+  } else if (questionLower.includes('location') || questionLower.includes('area') || questionLower.includes('pickup') || questionLower.includes('drop')) {
+    
+    tripsQuery.take = 150;
+  } else if (questionLower.includes('weekend') || questionLower.includes('weekday') || questionLower.includes('pattern')) {
+   
+    tripsQuery.where = {
+      pickup_time: {
+        gte: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000) 
+      }
+    };
+    tripsQuery.take = 300;
+  }
+
+  const [trips, users, tripStats] = await Promise.all([
+    prisma.trip.findMany(tripsQuery),
+    prisma.user.findMany({ 
+      take: 100,
+      orderBy: { id: 'desc' }
+    }),
+    
+    prisma.trip.aggregate({
+      _count: { id: true },
+      _avg: { riders_count: true },
+      where: {
+        pickup_time: {
+          gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) 
+        }
+      }
+    })
+  ]);
+
+  return { trips, users, tripStats };
+}
+
+function generateAnalyticsContext(trips: any[], users: any[], tripStats: any) {
+  
+  const timeAnalytics = analyzeTimePatterns(trips);
+  
+  const locationAnalytics = analyzeLocationPatterns(trips);
+  
+  const userAnalytics = analyzeUserDemographics(users);
+  
+  const rideAnalytics = analyzeRidePatterns(trips);
+
+  return {
+    timeAnalytics,
+    locationAnalytics,
+    userAnalytics,
+    rideAnalytics,
+    overallStats: tripStats
+  };
+}
+
+function analyzeTimePatterns(trips: any[]) {
+  const hourCounts: { [key: number]: number } = {};
+  const dayOfWeekCounts: { [key: number]: number } = {};
+  
+  trips.forEach(trip => {
+    if (trip.pickup_time) {
+      const date = new Date(trip.pickup_time);
+      const hour = date.getHours();
+      const dayOfWeek = date.getDay();
+      
+      hourCounts[hour] = (hourCounts[hour] || 0) + 1;
+      dayOfWeekCounts[dayOfWeek] = (dayOfWeekCounts[dayOfWeek] || 0) + 1;
+    }
+  });
+
+  const peakHours = Object.entries(hourCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([hour, count]) => ({ hour: parseInt(hour), count }));
+
+  return {
+    peakHours,
+    hourlyDistribution: hourCounts,
+    weekdayDistribution: dayOfWeekCounts,
+    totalTripsAnalyzed: trips.length
+  };
+}
+
+function analyzeLocationPatterns(trips: any[]) {
+  const pickupCounts: { [key: string]: number } = {};
+  const dropoffCounts: { [key: string]: number } = {};
+  
+  trips.forEach(trip => {
+    if (trip.pickup_address) {
+      pickupCounts[trip.pickup_address] = (pickupCounts[trip.pickup_address] || 0) + 1;
+    }
+    if (trip.dropoff_address) {
+      dropoffCounts[trip.dropoff_address] = (dropoffCounts[trip.dropoff_address] || 0) + 1;
+    }
+  });
+
+  const topPickups = Object.entries(pickupCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([location, count]) => ({ location, count }));
+
+  const topDropoffs = Object.entries(dropoffCounts)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 10)
+    .map(([location, count]) => ({ location, count }));
+
+  return {
+    topPickupLocations: topPickups,
+    topDropoffLocations: topDropoffs,
+    uniquePickupLocations: Object.keys(pickupCounts).length,
+    uniqueDropoffLocations: Object.keys(dropoffCounts).length
+  };
+}
+
+function analyzeUserDemographics(users: any[]) {
+  const ageCounts: { [key: string]: number } = {};
+  const totalUsers = users.length;
+  let ageSum = 0;
+  let validAgeCount = 0;
+
+  users.forEach(user => {
+    if (user.age && user.age > 0) {
+      ageSum += user.age;
+      validAgeCount++;
+      
+      if (user.age < 25) ageCounts['18-24'] = (ageCounts['18-24'] || 0) + 1;
+      else if (user.age < 35) ageCounts['25-34'] = (ageCounts['25-34'] || 0) + 1;
+      else if (user.age < 45) ageCounts['35-44'] = (ageCounts['35-44'] || 0) + 1;
+      else if (user.age < 55) ageCounts['45-54'] = (ageCounts['45-54'] || 0) + 1;
+      else ageCounts['55+'] = (ageCounts['55+'] || 0) + 1;
+    }
+  });
+
+  return {
+    totalUsers,
+    averageAge: validAgeCount > 0 ? Math.round(ageSum / validAgeCount) : null,
+    ageDistribution: ageCounts,
+    usersWithValidAge: validAgeCount
+  };
+}
+
+function analyzeRidePatterns(trips: any[]) {
+  let totalRiders = 0;
+  let totalDuration = 0;
+  let validDurationCount = 0;
+  const riderCountDistribution: { [key: number]: number } = {};
+
+  trips.forEach(trip => {
+    if (trip.riders_count) {
+      totalRiders += trip.riders_count;
+      riderCountDistribution[trip.riders_count] = (riderCountDistribution[trip.riders_count] || 0) + 1;
+    }
+    
+    if (trip.pickup_time && trip.dropoff_time) {
+      const duration = new Date(trip.dropoff_time).getTime() - new Date(trip.pickup_time).getTime();
+      const durationMinutes = duration / (1000 * 60);
+      if (durationMinutes > 0 && durationMinutes < 300) { // Reasonable duration
+        totalDuration += durationMinutes;
+        validDurationCount++;
+      }
+    }
+  });
+
+  return {
+    averageRidersPerTrip: trips.length > 0 ? Math.round(totalRiders / trips.length * 10) / 10 : 0,
+    averageTripDuration: validDurationCount > 0 ? Math.round(totalDuration / validDurationCount) : null,
+    riderCountDistribution,
+    totalTripsAnalyzed: trips.length
+  };
+}
 
 app.post("/query", async (req: Request, res: Response) => {
   try {
-    const { question } = req.body;
-    if (!question) {
-      return res.status(400).json({ error: "Missing question in body" });
+    const { question, query } = req.body; 
+    const userQuestion = question || query;
+    
+    if (!userQuestion) {
+      return res.status(400).json({ 
+        error: "Missing 'question' or 'query' in request body",
+        example: { question: "What are the peak rideshare hours in Austin?" }
+      });
     }
 
-    const trips = await prisma.trip.findMany({
-      take: 50,
-      include: { riders: { include: { user: true } } },
+    const { trips, users, tripStats } = await getSmartDataContext(userQuestion);
+    
+    const analytics = generateAnalyticsContext(trips, users, tripStats);
+
+    const enhancedPrompt = `
+ **FETII AI - INTELLIGENT RIDESHARE ANALYTICS ASSISTANT**
+
+You are Fetii AI, Austin's most advanced rideshare analytics assistant. You have deep knowledge of transportation patterns, user behavior, and market insights.
+
+**ABOUT FETII:**
+• **Company:** Fetii Inc. - Shared mobility company (Founded 2019, Austin, Texas)
+• **Mission:** On-demand group ridesharing solutions to reduce emissions & decrease congestion
+• **Services:** Safe school shuttles, campus transportation, corporate commuting
+• **Website:** https://www.fetii.com
+• **Team:** 11-50 employees, Ground Passenger Transportation industry
+• **Safety Focus:** Vetted drivers with clean records, thoroughly inspected vehicles
+
+**CURRENT DATA INSIGHTS:**
+📊 **Time Analytics:**
+${JSON.stringify(analytics.timeAnalytics, null, 2)}
+
+📍 **Location Analytics:**
+${JSON.stringify(analytics.locationAnalytics, null, 2)}
+
+👥 **User Demographics:**
+${JSON.stringify(analytics.userAnalytics, null, 2)}
+
+🚗 **Ride Patterns:**
+${JSON.stringify(analytics.rideAnalytics, null, 2)}
+
+📈 **Overall Statistics:**
+${JSON.stringify(analytics.overallStats, null, 2)}
+
+**SAMPLE DATA CONTEXT:**
+Recent Trips Sample: ${JSON.stringify(trips.slice(0, 5), null, 2)}
+User Demographics Sample: ${JSON.stringify(users.slice(0, 5), null, 2)}
+
+**USER QUESTION:** "${userQuestion}"
+
+**RESPONSE GUIDELINES:**
+ Provide data-driven insights with specific numbers and percentages
+ Use clear, engaging language suitable for business stakeholders
+ Include actionable recommendations when relevant
+ Reference Austin-specific context and locations when applicable
+ Highlight safety and efficiency aspects of Fetii's service
+ Use emojis and formatting to make responses visually appealing
+ Decode any location data to provide geographical context
+ Connect insights to broader transportation and business trends
+
+**RESPONSE FORMAT:**
+• Start with a direct answer to the question
+• Provide supporting data and analysis
+• Include relevant trends or patterns
+• End with actionable insights or recommendations
+
+Answer comprehensively but concisely. Be conversational yet professional. Focus on delivering maximum value through data-driven insights.
+`;
+
+    console.log(" Processing question:", userQuestion);
+    console.log(" Retrieved", trips.length, "trips and", users.length, "users");
+    
+    const answer = await callGeminiWithRetry(enhancedPrompt);
+
+    res.json({ 
+      question: userQuestion,
+      answer,
+      response: answer, 
+      metadata: {
+        dataPoints: {
+          tripsAnalyzed: trips.length,
+          usersAnalyzed: users.length,
+          timeRange: "Last 30 days",
+          totalTripsInDB: tripStats._count.id
+        },
+        analytics: {
+          averageRidersPerTrip: analytics.rideAnalytics.averageRidersPerTrip,
+          averageTripDuration: analytics.rideAnalytics.averageTripDuration,
+          peakHours: analytics.timeAnalytics.peakHours.map(h => `${h.hour}:00`),
+          topPickupLocation: analytics.locationAnalytics.topPickupLocations[0]?.location
+        },
+        timestamp: new Date().toISOString()
+      }
     });
 
-    const users = await prisma.user.findMany({ take: 50 });
-
-    const prompt = `
-You are a data assistant for a ride-sharing company (Fetii).
-The database has:
-- Trip(id, booking_user_id, pickup_address, dropoff_address, pickup_time, dropoff_time, riders_count)
-- Rider(trip_id, user_id)
-- User(id, age)
-
-The user asked: "${question}"
-
-Here are some example rows from Trips: ${JSON.stringify(trips, null, 2)}
-Here are some example rows from Users: ${JSON.stringify(users, null, 2)}
-
-let me tell about something about fetti AI :- Safe Shuttles For School
-Every single one of Fetii’s drivers has been vetted with a clean driving record and years of experience in the transportation business and don’t worry, our vehicles are thoroughly inspected before each trip.
-
-Customize Shuttle Schedules Throughout Campus
-Getting your students and staff safely and efficiently between buildings, to and from parking lots, or to and from their homes, is extremely important. Providing your students and staff with a safe and comfortable shuttle service not only will help them get to school in one piece, but it will also set them up for success.
-When asked about the location then decode the geolocation it is mostly of usa and also give good refined answer with the sources.
-
-etii Inc. is a shared mobility company that provides on-demand group ridesharing and commuting solutions for groups and businesses in order to reduce emissions and decrease congestion.
-
-Website
-https://www.fetii.com
-
-Scrap all the data from this site too and tell about things goodly.
-
-Industry
-Ground Passenger Transportation
-Company size
-11-50 employees
-75 associated members LinkedIn members who’ve listed Fetii as their current workplace on their profile.
-Headquarters
-Austin, Texas
-Founded
-2019
-
-Answer only the final result , in plain language, without SQL Explanation,and decide the length by yourself like how do you want to respond.
-    `;
-
-    const answer = await callGeminiWithRetry(prompt);
-
-    res.json({ question, answer });
   } catch (err) {
-    console.error("Error in /query:", err);
-    res.status(500).json({ error: "Internal server error" });
+    console.error(" Error in /query:", err);
+    res.status(500).json({ 
+      error: "Internal server error",
+      message: "Failed to process your question. Please try again.",
+      timestamp: new Date().toISOString()
+    });
   }
 });
 
 app.get("/", (_req: Request, res: Response) => {
-  res.send(" FetiiAI server is running!");
+  res.json({
+    status: "🚀 Fetii AI Analytics Server is running!",
+    version: "2.0.0",
+    endpoints: {
+      query: "POST /query - Ask questions about rideshare data",
+      health: "GET / - Health check"
+    },
+    timestamp: new Date().toISOString()
+  });
+});
+
+app.get("/analytics", async (_req: Request, res: Response) => {
+  try {
+    const { trips, users, tripStats } = await getSmartDataContext("general analytics");
+    const analytics = generateAnalyticsContext(trips, users, tripStats);
+    
+    res.json({
+      success: true,
+      analytics,
+      metadata: {
+        dataPoints: trips.length,
+        users: users.length,
+        totalTrips: tripStats._count.id,
+        lastUpdated: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error("Error fetching analytics:", error);
+    res.status(500).json({ error: "Failed to fetch analytics" });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(` Server running on http://localhost:${PORT}`);
+  console.log(` Fetii AI Analytics Server running on http://localhost:${PORT}`);
+  console.log(` Ready to process intelligent rideshare analytics queries!`);
 });

@@ -5,6 +5,7 @@
     "esModuleInterop": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true, 
+    "noEmit": true
   }
 }

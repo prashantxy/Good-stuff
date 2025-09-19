@@ -1,22 +1,141 @@
+// utils/gemini.ts
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "");
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-export async function callGeminiWithRetry(prompt: string, retries = 3): Promise<string> {
-  for (let i = 0; i < retries; i++) {
+// Enhanced configuration for better responses
+const generationConfig = {
+  temperature: 0.7,
+  topK: 40,
+  topP: 0.95,
+  maxOutputTokens: 2048,
+};
+
+// Safety settings to allow business discussions
+const safetySettings = [
+  {
+    category: "HARM_CATEGORY_HARASSMENT" as const,
+    threshold: "BLOCK_MEDIUM_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_HATE_SPEECH" as const,
+    threshold: "BLOCK_MEDIUM_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_SEXUALLY_EXPLICIT" as const,
+    threshold: "BLOCK_MEDIUM_AND_ABOVE" as const,
+  },
+  {
+    category: "HARM_CATEGORY_DANGEROUS_CONTENT" as const,
+    threshold: "BLOCK_MEDIUM_AND_ABOVE" as const,
+  },
+];
+
+export async function callGeminiWithRetry(
+  prompt: string,
+  maxRetries: number = 3,
+  delayMs: number = 1000
+): Promise<string> {
+  let lastError: any;
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const response = await model.generateContent(prompt);
-      return response.response.text();
-    } catch (err: any) {
-      if (err.status === 429 && i < retries - 1) {
-        const waitTime = 60000; 
-        console.warn(` Rate limit hit. Retrying in ${waitTime / 1000}s...`);
-        await new Promise((resolve) => setTimeout(resolve, waitTime));
-      } else {
-        throw err;
+      console.log(` Gemini API call attempt ${attempt}/${maxRetries}`);
+      
+      const model = genAI.getGenerativeModel({
+        model: "gemini-1.5-flash", 
+        generationConfig, //@ts-ignore
+        safetySettings,
+      });
+
+      const result = await model.generateContent({
+        contents: [{ role: "user", parts: [{ text: prompt }] }],
+      });
+
+      const response = await result.response;
+      const text = response.text();
+
+      if (!text || text.trim().length === 0) {
+        throw new Error("Empty response from Gemini API");
+      }
+
+      console.log(` Gemini API call successful on attempt ${attempt}`);
+      console.log(` Response length: ${text.length} characters`);
+      
+      return text.trim();
+
+    } catch (error: any) {
+      lastError = error;
+      console.error(`❌ Gemini API call failed on attempt ${attempt}:`, error?.message || error);
+
+      if (error?.message?.includes("API_KEY") || 
+          error?.message?.includes("PERMISSION_DENIED") ||
+          error?.message?.includes("QUOTA_EXCEEDED")) {
+        console.error("🚫 Non-retryable error detected, stopping retries");
+        break;
+      }
+
+      if (attempt < maxRetries) {
+        const waitTime = delayMs * Math.pow(2, attempt - 1);
+        console.log(`⏳ Waiting ${waitTime}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
       }
     }
   }
-  throw new Error(" Max retries reached for Gemini API.");
+
+  // If all retries failed, throw the last error with context
+  throw new Error(`Gemini API failed after ${maxRetries} attempts. Last error: ${lastError?.message || 'Unknown error'}`);
+}
+
+// Function to validate and format responses
+export function formatGeminiResponse(rawResponse: string): string {
+  // Clean up common formatting issues
+  let formatted = rawResponse
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold text
+    .replace(/\*(.*?)\*/g, '<em>$1</em>') // Italic text
+    .replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>') // Code blocks
+    .replace(/`(.*?)`/g, '<code>$1</code>') // Inline code
+    .replace(/\n\s*\n/g, '\n\n') // Clean up extra whitespace
+    .trim();
+
+  return formatted;
+}
+
+// Function to estimate token count (rough approximation)
+export function estimateTokenCount(text: string): number {
+  // Rough estimation: 1 token ≈ 4 characters for English text
+  return Math.ceil(text.length / 4);
+}
+
+// Function to truncate context if too long
+export function truncateContext(context: string, maxTokens: number = 15000): string {
+  const estimatedTokens = estimateTokenCount(context);
+  
+  if (estimatedTokens <= maxTokens) {
+    return context;
+  }
+
+  // Calculate how much to keep (with some buffer)
+  const keepRatio = (maxTokens * 0.8) / estimatedTokens;
+  const keepLength = Math.floor(context.length * keepRatio);
+  
+  console.log(`⚠️ Truncating context from ${context.length} to ${keepLength} characters`);
+  return context.substring(0, keepLength) + "\n\n[... context truncated for API limits ...]";
+}
+
+// Enhanced error handling for different types of API errors
+export function handleGeminiError(error: any): string {
+  if (error?.message?.includes("SAFETY")) {
+    return "I apologize, but I cannot provide a response due to safety guidelines. Please rephrase your question.";
+  }
+  
+  if (error?.message?.includes("QUOTA_EXCEEDED")) {
+    return "I'm currently experiencing high demand. Please try again in a few moments.";
+  }
+  
+  if (error?.message?.includes("API_KEY")) {
+    return "There's an issue with the API configuration. Please contact support.";
+  }
+  
+  return "I'm having trouble processing your request right now. Please try again or rephrase your question.";
 }
