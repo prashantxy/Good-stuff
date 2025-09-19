@@ -2,13 +2,61 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Send, Sparkles, TrendingUp, MapPin, Users, Clock, Zap, Menu, X, Maximize2, Minimize2, Settings, Moon, Sun } from 'lucide-react';
 
+
+type TypewriterTextProps = {
+  text: string;       
+  speed?: number;     
+};
+
+const useTypewriter = (text: string, speed: number = 50) => {
+  const [displayText, setDisplayText] = useState<string>("");
+  const [isTyping, setIsTyping] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (!text) return;
+
+    setIsTyping(true);
+    setDisplayText("");
+    let i = 0;
+
+    const timer = setInterval(() => {
+      if (i < text.length) {
+        setDisplayText(text.slice(0, i + 1));
+        i++;
+      } else {
+        setIsTyping(false);
+        clearInterval(timer);
+      }
+    }, speed);
+
+    return () => clearInterval(timer);
+  }, [text, speed]);
+
+  return { displayText, isTyping };
+};
+
+const TypewriterText = ({ text, speed = 70 }: TypewriterTextProps) => {
+  const { displayText, isTyping } = useTypewriter(text, speed);
+
+  return (
+    <div className="whitespace-pre-wrap leading-relaxed">
+      {displayText}
+      {isTyping && (
+        <span className="animate-pulse text-purple-400 ml-1">|</span>
+      )}
+    </div>
+  );
+};
+
+
 const FetiiChatbot = () => {
   const [messages, setMessages] = useState([
     {
       id: 1,
       type: 'ai',
-      content: "👋 Hey there! I'm Fetii AI, your intelligent rideshare analytics assistant. I can help you understand movement trends, analyze rideshare patterns, and provide insights about Austin's transportation data. What would you like to know?",
-      timestamp: new Date().toLocaleTimeString()
+      content: " Hey there! I'm Fetii AI, your intelligent rideshare analytics assistant. I can help you understand movement trends, analyze rideshare patterns, and provide insights about Austin's transportation data. What would you like to know?",
+      timestamp: new Date().toLocaleTimeString(),
+      isComplete: true 
     }
   ]);
   const [inputValue, setInputValue] = useState('');
@@ -42,7 +90,8 @@ const FetiiChatbot = () => {
       id: Date.now(),
       type: 'user',
       content: inputValue,
-      timestamp: new Date().toLocaleTimeString()
+      timestamp: new Date().toLocaleTimeString(),
+      isComplete: true
     };
 
     setMessages(prev => [...prev, userMessage]);
@@ -64,7 +113,8 @@ const FetiiChatbot = () => {
         id: Date.now() + 1,
         type: 'ai',
         content: data.response || data.answer || "I apologize, but I couldn't process your request at the moment. Please try again.",
-        timestamp: new Date().toLocaleTimeString()
+        timestamp: new Date().toLocaleTimeString(),
+        isComplete: false 
       };
 
       setMessages(prev => [...prev, aiMessage]);
@@ -72,8 +122,9 @@ const FetiiChatbot = () => {
       const errorMessage = {
         id: Date.now() + 1,
         type: 'ai',
-        content: "I'm having trouble connecting to my analytics engine. and try again.",
-        timestamp: new Date().toLocaleTimeString()
+        content: "I'm having trouble connecting to my analytics engine. Please try again.",
+        timestamp: new Date().toLocaleTimeString(),
+        isComplete: false
       };
       setMessages(prev => [...prev, errorMessage]);
     }
@@ -230,7 +281,11 @@ const FetiiChatbot = () => {
                             ? 'bg-white/5 backdrop-blur-sm border border-white/10 text-white'
                             : 'bg-white/80 backdrop-blur-sm border border-white/50 text-black'
                       } shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-[1.02] transform`}>
-                        <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                        {message.type === 'ai' && !message.isComplete ? (
+                          <TypewriterText text={message.content} speed={30} />
+                        ) : (
+                          <div className="whitespace-pre-wrap leading-relaxed">{message.content}</div>
+                        )}
                       </div>
                       <div className={`text-xs mt-2 ${isDarkMode ? 'text-gray-400' : 'text-gray-600'}`}>
                         {message.timestamp}
