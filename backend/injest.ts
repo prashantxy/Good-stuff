@@ -52,19 +52,20 @@ async function main() {
 
   await prisma.user.createMany({ data: usersData, skipDuplicates: true });
 
-  const tripsData = tripSheet.map((row) => ({
-    id: String(row["Trip ID"] || row["trip_id"]),
-    booking_user_id: (row["Booking User ID"] || row["booking_user_id"] || "").toString(),
-    pickup_address: row["Pick Up Address"] || row["pickup_address"] || null,
-    dropoff_address: row["Drop Off Address"] || row["dropoff_address"] || null,
-    pickup_lat: row["Pick Up Latitude"] ? Number(row["Pick Up Latitude"]) : null,
-    pickup_lon: row["Pick Up Longitude"] ? Number(row["Pick Up Longitude"]) : null,
-    dropoff_lat: row["Drop Off Latitude"] ? Number(row["Drop Off Latitude"]) : null,
-    dropoff_lon: row["Drop Off Longitude"] ? Number(row["Drop Off Longitude"]) : null,
-    pickup_time: parseExcelDate(row["Trip Date and Time"] || row["trip_date_time"]),
-    dropoff_time: null,
-    riders_count: row["Total Passengers"] ? Number(row["Total Passengers"]) : null,
-  }));
+  const tripsData = tripSheet.map((row: Record<string, any>) => ({
+  id: String(row["Trip ID"] || row["trip_id"]),
+  booking_user_id: (row["Booking User ID"] || row["booking_user_id"] || "").toString(),
+  pickup_address: row["Pick Up Address"] || row["pickup_address"] || null,
+  dropoff_address: row["Drop Off Address"] || row["dropoff_address"] || null,
+  pickup_lat: row["Pick Up Latitude"] ? Number(row["Pick Up Latitude"]) : null,
+  pickup_lon: row["Pick Up Longitude"] ? Number(row["Pick Up Longitude"]) : null,
+  dropoff_lat: row["Drop Off Latitude"] ? Number(row["Drop Off Latitude"]) : null,
+  dropoff_lon: row["Drop Off Longitude"] ? Number(row["Drop Off Longitude"]) : null,
+  pickup_time: parseExcelDate(row["Trip Date and Time"] || row["trip_date_time"]),
+  dropoff_time: null,
+  riders_count: row["Total Passengers"] ? Number(row["Total Passengers"]) : null
+}));
+
 
   await prisma.trip.createMany({ data: tripsData, skipDuplicates: true });
 
