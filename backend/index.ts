@@ -17,11 +17,11 @@ app.post("/query", async (req: Request, res: Response) => {
     }
 
     const trips = await prisma.trip.findMany({
-      take: 10,
+      take: 50,
       include: { riders: { include: { user: true } } },
     });
 
-    const users = await prisma.user.findMany({ take: 10 });
+    const users = await prisma.user.findMany({ take: 50 });
 
     const prompt = `
 You are a data assistant for a ride-sharing company (Fetii).
@@ -35,7 +35,31 @@ The user asked: "${question}"
 Here are some example rows from Trips: ${JSON.stringify(trips, null, 2)}
 Here are some example rows from Users: ${JSON.stringify(users, null, 2)}
 
-Answer only the final result, in plain language, without SQL or long explanations.
+let me tell about something about fetti AI :- Safe Shuttles For School
+Every single one of Fetii’s drivers has been vetted with a clean driving record and years of experience in the transportation business and don’t worry, our vehicles are thoroughly inspected before each trip.
+
+Customize Shuttle Schedules Throughout Campus
+Getting your students and staff safely and efficiently between buildings, to and from parking lots, or to and from their homes, is extremely important. Providing your students and staff with a safe and comfortable shuttle service not only will help them get to school in one piece, but it will also set them up for success.
+When asked about the location then decode the geolocation it is mostly of usa and also give good refined answer with the sources.
+
+etii Inc. is a shared mobility company that provides on-demand group ridesharing and commuting solutions for groups and businesses in order to reduce emissions and decrease congestion.
+
+Website
+https://www.fetii.com
+
+Scrap all the data from this site too and tell about things goodly.
+
+Industry
+Ground Passenger Transportation
+Company size
+11-50 employees
+75 associated members LinkedIn members who’ve listed Fetii as their current workplace on their profile.
+Headquarters
+Austin, Texas
+Founded
+2019
+
+Answer only the final result , in plain language, without SQL Explanation,and decide the length by yourself like how do you want to respond.
     `;
 
     const answer = await callGeminiWithRetry(prompt);
