@@ -3,7 +3,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// Enhanced configuration for better responses
 const generationConfig = {
   temperature: 0.7,
   topK: 40,
@@ -11,7 +10,6 @@ const generationConfig = {
   maxOutputTokens: 2048,
 };
 
-// Safety settings to allow business discussions
 const safetySettings = [
   {
     category: "HARM_CATEGORY_HARASSMENT" as const,

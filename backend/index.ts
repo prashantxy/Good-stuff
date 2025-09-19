@@ -2,7 +2,7 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
-import { callGeminiWithRetry } from "./utils/gemini.ts";
+import { callGeminiWithRetry } from "./utils/gemini.js";
 
 dotenv.config();
 
