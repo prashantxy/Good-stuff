@@ -9,11 +9,10 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-// Enhanced CORS configuration
 app.use(cors({
   origin: [
     'http://localhost:3001', 
-    'https://fetiiai-hackathon.vercel.app/'
+    'https://fetiiai-hackathon.vercel.app'
   ],
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
@@ -327,7 +326,7 @@ Answer comprehensively but concisely. Be conversational yet professional. Focus 
 
 app.get("/", (_req: Request, res: Response) => {
   res.json({
-    status: "🚀 Fetii AI Analytics Server is running!",
+    status: " Fetii AI Analytics Server is running!",
     version: "2.0.0",
     endpoints: {
       query: "POST /query - Ask questions about rideshare data",
