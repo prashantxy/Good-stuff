@@ -14,9 +14,12 @@ app.use(cors({
     'http://localhost:3001', 
     'https://fetiiai-hackathon.vercel.app'
   ],
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'OPTIONS'],   // include OPTIONS
   allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,                     // optional if you want cookies/auth headers
 }));
+
+app.use()
 
 app.use(express.json({ limit: '10mb' }));
 
