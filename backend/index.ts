@@ -13,6 +13,7 @@ const prisma = new PrismaClient();
 app.use(cors({
   origin: [
     'http://localhost:3001', 
+    
   ],
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
