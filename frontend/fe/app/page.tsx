@@ -1,6 +1,6 @@
 "use client"
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, TrendingUp, MapPin, Users, Clock, Zap, Menu, X, Maximize2, Minimize2, Settings, Moon, Sun } from 'lucide-react';
+import { Send, Sparkles, TrendingUp, MapPin, Users, Clock, Zap, Menu, Maximize2, Minimize2, Settings, Moon, Sun } from 'lucide-react';
 
 
 type TypewriterTextProps = {
@@ -67,7 +67,7 @@ const FetiiChatbot = () => {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  const scrollToBottom = () => { //@ts-ignore
+  const scrollToBottom = () => { // @ts-expect-error
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
