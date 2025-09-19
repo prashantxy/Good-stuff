@@ -111,7 +111,8 @@ const FetiiChatbot = () => {
     setIsLoading(true);
 
     try {
-      const response = await fetch("NEXT_PUBLIC_BACKEND_URL/query", {
+      const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+      const response = await fetch("${backendUrl}/query", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
