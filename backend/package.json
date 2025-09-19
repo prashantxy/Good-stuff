@@ -2,12 +2,12 @@
   "name": "backend",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
   "type": "module",
   "scripts": {
-    "dev": "ts-node-esm index.ts",
+    "dev": "ts-node-esm --transpile-only index.ts",
+    "build": "tsc",
     "start": "node dist/index.js",
-    "build": "tsc"
+    "prisma:generate": "prisma generate"
   },
   "keywords": [],
   "author": "",
@@ -15,17 +15,19 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@prisma/client": "6.16.1",
-    "body-parser": "^2.2.0",
+    "body-parser": "^1.20.3",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.2",
+    "dotenv": "^16.4.5",
     "express": "^5.1.0",
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/express": "^5.0.3",
-    "@types/node": "^24.3.3",
-    "prisma": "^6.16.1",
+    "@types/node": "^20.14.10",
+    "@types/cors": "^2.8.17",
+    "@types/xlsx": "0.0.36",
+    "prisma": "6.16.1",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.2"
+    "typescript": "^5.6.3"
   }
 }
