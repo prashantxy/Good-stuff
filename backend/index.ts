@@ -48,7 +48,7 @@ Answer only the final result, in plain language, without SQL or long explanation
 });
 
 app.get("/", (_req: Request, res: Response) => {
-  res.send("🚖 FetiiAI server is running!");
+  res.send(" FetiiAI server is running!");
 });
 
 const PORT = process.env.PORT || 3000;
