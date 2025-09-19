@@ -1,11 +1,23 @@
-"use client"
-import React, { useState, useRef, useEffect } from 'react';
-import { Send, Sparkles, TrendingUp, MapPin, Users, Clock, Zap, Menu, Maximize2, Minimize2, Settings, Moon, Sun } from 'lucide-react';
-
+"use client";
+import React, { useState, useRef, useEffect } from "react";
+import {
+  Send,
+  Sparkles,
+  TrendingUp,
+  MapPin,
+  Users,
+  Clock,
+  Zap,
+  Menu,
+  Maximize2,
+  Minimize2,
+  Moon,
+  Sun,
+} from "lucide-react";
 
 type TypewriterTextProps = {
-  text: string;       
-  speed?: number;     
+  text: string;
+  speed?: number;
 };
 
 const useTypewriter = (text: string, speed: number = 50) => {
@@ -48,27 +60,27 @@ const TypewriterText = ({ text, speed = 70 }: TypewriterTextProps) => {
   );
 };
 
-
 const FetiiChatbot = () => {
   const [messages, setMessages] = useState([
     {
       id: 1,
-      type: 'ai',
-      content: " Hey there! I'm Fetii AI, your intelligent rideshare analytics assistant. I can help you understand movement trends, analyze rideshare patterns, and provide insights about Austin's transportation data. What would you like to know?",
+      type: "ai",
+      content:
+        " Hey there! I'm Fetii AI, your intelligent rideshare analytics assistant. I can help you understand movement trends, analyze rideshare patterns, and provide insights about Austin's transportation data. What would you like to know?",
       timestamp: new Date().toLocaleTimeString(),
-      isComplete: true 
-    }
+      isComplete: true,
+    },
   ]);
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
-  const messagesEndRef = useRef(null);
-  const inputRef = useRef(null);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const scrollToBottom = () => { // @ts-expect-error
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
   useEffect(() => {
@@ -80,7 +92,7 @@ const FetiiChatbot = () => {
     "Show me popular pickup locations",
     "Analyze weekend vs weekday patterns",
     "What's the average ride duration?",
-    "Which areas have the highest demand?"
+    "Which areas have the highest demand?",
   ];
 
   const handleSendMessage = async () => {
@@ -88,52 +100,56 @@ const FetiiChatbot = () => {
 
     const userMessage = {
       id: Date.now(),
-      type: 'user',
+      type: "user",
       content: inputValue,
       timestamp: new Date().toLocaleTimeString(),
-      isComplete: true
+      isComplete: true,
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setInputValue('');
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
     setIsLoading(true);
 
     try {
-      const response = await fetch('http://localhost:3000/query', {
-        method: 'POST',
+      const response = await fetch("NEXT_PUBLIC_BACKEND_URL/query", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({ query: inputValue }),
       });
 
       const data = await response.json();
-      
+
       const aiMessage = {
         id: Date.now() + 1,
-        type: 'ai',
-        content: data.response || data.answer || "I apologize, but I couldn't process your request at the moment. Please try again.",
+        type: "ai",
+        content:
+          data.response ||
+          data.answer ||
+          "I apologize, but I couldn't process your request at the moment. Please try again.",
         timestamp: new Date().toLocaleTimeString(),
-        isComplete: false 
+        isComplete: false,
       };
 
-      setMessages(prev => [...prev, aiMessage]);
-    } catch (error) {
+      setMessages((prev) => [...prev, aiMessage]);
+    } catch (_error) {
       const errorMessage = {
         id: Date.now() + 1,
-        type: 'ai',
-        content: "I'm having trouble connecting to my analytics engine. Please try again.",
+        type: "ai",
+        content:
+          "I'm having trouble connecting to my analytics engine. Please try again.",
         timestamp: new Date().toLocaleTimeString(),
-        isComplete: false
+        isComplete: false,
       };
-      setMessages(prev => [...prev, errorMessage]);
+      setMessages((prev) => [...prev, errorMessage]);
     }
 
     setIsLoading(false);
   };
 
-  const handleKeyPress = (e:any) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
@@ -141,18 +157,29 @@ const FetiiChatbot = () => {
 
   const ThinkingDots = () => (
     <div className="flex space-x-1 py-4">
-      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-      <div className="w-2 h-2 bg-purple-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+      <div
+        className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
+        style={{ animationDelay: "0ms" }}
+      ></div>
+      <div
+        className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
+        style={{ animationDelay: "150ms" }}
+      ></div>
+      <div
+        className="w-2 h-2 bg-purple-500 rounded-full animate-bounce"
+        style={{ animationDelay: "300ms" }}
+      ></div>
     </div>
   );
 
   return (
-    <div className={`min-h-screen transition-all duration-500 ${isDarkMode 
-      ? 'bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900' 
-      : 'bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50'
-    } ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
-      
+    <div
+      className={`min-h-screen transition-all duration-500 ${
+        isDarkMode
+          ? "bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900"
+          : "bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50"
+      } ${isFullscreen ? "fixed inset-0 z-50" : ""}`}
+    >
       {/* Animated Background Elements */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-purple-500/10 rounded-full blur-3xl animate-pulse"></div>
