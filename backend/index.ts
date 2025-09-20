@@ -11,7 +11,7 @@ const prisma = new PrismaClient();
 
 const allowedOrigins = [
   'http://localhost:3001',
-  'https://fetiiai-hackathon.vercel.app'
+  'https://fetiiai-hackathon.vercel.app/'
 ];
 
 app.use(cors({
