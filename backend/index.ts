@@ -9,8 +9,12 @@ const app = express();
 const prisma = new PrismaClient();
 
 
-  
-// Replace your current CORS middleware with this:
+ const allowedOrigins = [
+  'https://fetiiai-hackathon.vercel.app', 
+  'http://localhost:3001',              
+  'https://good-stuff-2php.onrender.com'   
+];
+
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
@@ -19,20 +23,18 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   console.log('🔍 CORS Debug - Method:', req.method);
   console.log('🔍 CORS Debug - URL:', req.url);
   
-  // Always set CORS headers for all requests
   if (origin && allowedOrigins.includes(origin)) {
     console.log('✅ Origin allowed:', origin);
     res.header('Access-Control-Allow-Origin', origin);
   } else if (origin) {
     console.log('❌ Origin not in list, but setting anyway:', origin);
-    // For debugging, allow the origin anyway
+    
     res.header('Access-Control-Allow-Origin', origin);
   } else {
     console.log('⚠️ No origin header, setting wildcard');
     res.header('Access-Control-Allow-Origin', '*');
   }
   
-  // Always set these headers
   res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT,DELETE');
   res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control');
   res.header('Access-Control-Allow-Credentials', 'true');
