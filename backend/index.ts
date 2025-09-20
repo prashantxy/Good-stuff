@@ -9,7 +9,7 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-app.use(cors({
+app.options("*", cors({
   origin: [
     'http://localhost:3001', 
     'https://fetiiai-hackathon.vercel.app'
@@ -18,6 +18,7 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,                     
 }));
+
 
 
 
