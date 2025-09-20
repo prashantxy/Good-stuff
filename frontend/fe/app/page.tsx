@@ -48,7 +48,7 @@ const useTypewriter = (text: string, speed: number = 50) => {
   return { displayText, isTyping };
 };
 
-const TypewriterText = ({ text, speed = 300 }: TypewriterTextProps) => {
+const TypewriterText = ({ text, speed = 500 }: TypewriterTextProps) => {
   const { displayText, isTyping } = useTypewriter(text, speed);
 
   return (
@@ -101,7 +101,6 @@ const FetiiChatbot = () => {
   const handleSendMessage = async () => {
     if (!inputValue.trim() && !isGenerating) return;
 
-    // If currently generating, stop the current generation
     if (isGenerating && abortControllerRef.current) {
       handleStopGeneration();
       return;
@@ -119,7 +118,6 @@ const FetiiChatbot = () => {
     setInputValue("");
     setIsLoading(true);
 
-    // Create new AbortController for this request
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
