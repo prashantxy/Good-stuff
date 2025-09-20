@@ -48,7 +48,7 @@ const useTypewriter = (text: string, speed: number = 50) => {
   return { displayText, isTyping };
 };
 
-const TypewriterText = ({ text, speed = 200 }: TypewriterTextProps) => {
+const TypewriterText = ({ text, speed = 300 }: TypewriterTextProps) => {
   const { displayText, isTyping } = useTypewriter(text, speed);
 
   return (
