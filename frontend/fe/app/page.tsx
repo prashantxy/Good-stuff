@@ -1,4 +1,4 @@
-"use client";
+'use client'
 import React, { useState, useRef, useEffect } from "react";
 import {
   Send,
@@ -13,6 +13,7 @@ import {
   Minimize2,
   Moon,
   Sun,
+  Square,
 } from "lucide-react";
 
 type TypewriterTextProps = {
@@ -73,11 +74,13 @@ const FetiiChatbot = () => {
   ]);
   const [inputValue, setInputValue] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -95,76 +98,132 @@ const FetiiChatbot = () => {
     "Which areas have the highest demand?",
   ];
 
+  const handleSendMessage = async () => {
+    if (!inputValue.trim() && !isGenerating) return;
 
-const handleSendMessage = async () => {
-  if (!inputValue.trim()) return;
-
-  const userMessage = {
-    id: Date.now(),
-    type: "user",
-    content: inputValue,
-    timestamp: new Date().toLocaleTimeString(),
-    isComplete: true,
-  };
-
-  setMessages((prev) => [...prev, userMessage]);
-  setInputValue("");
-  setIsLoading(true);
-
-  try {
-    console.log('Sending request via Vercel proxy...');
-    
-    const response = await fetch('/api/query', {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json" 
-      },
-      body: JSON.stringify({ query: inputValue })
-    });
-
-    console.log('Response status:', response.status);
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
+    // If currently generating, stop the current generation
+    if (isGenerating && abortControllerRef.current) {
+      handleStopGeneration();
+      return;
     }
 
-    const data = await response.json();
-    console.log('Data received successfully');
-
-    const aiMessage = {
-      id: Date.now() + 1,
-      type: "ai",
-      content:
-        data.response ||
-        data.answer ||
-        "I apologize, but I couldn't process your request at the moment. Please try again.",
+    const userMessage = {
+      id: Date.now(),
+      type: "user",
+      content: inputValue,
       timestamp: new Date().toLocaleTimeString(),
-      isComplete: false,
+      isComplete: true,
     };
 
-    setMessages((prev) => [...prev, aiMessage]);
-  } catch (error) {
-    console.error('Request failed:', error);
-    const errorMessage = {
-      id: Date.now() + 1,
-      type: "ai",
-      content:
-        "I'm having trouble connecting to my analytics engine. Please try again.",
-      timestamp: new Date().toLocaleTimeString(),
-      isComplete: false,
-    };
-    setMessages((prev) => [...prev, errorMessage]);
-  }
+    setMessages((prev) => [...prev, userMessage]);
+    setInputValue("");
+    setIsLoading(true);
 
-  setIsLoading(false);
-};
+    // Create new AbortController for this request
+    const abortController = new AbortController();
+    abortControllerRef.current = abortController;
+
+    try {
+      console.log('Sending request via Vercel proxy...');
+      
+      const response = await fetch('/api/query', {
+        method: "POST",
+        headers: { 
+          "Content-Type": "application/json" 
+        },
+        body: JSON.stringify({ query: userMessage.content }),
+        signal: abortController.signal
+      });
+
+      console.log('Response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
+      }
+
+      const data = await response.json();
+      console.log('Data received successfully');
+
+      // Check if request was aborted
+      if (abortController.signal.aborted) {
+        return;
+      }
+
+      const aiMessage = {
+        id: Date.now() + 1,
+        type: "ai",
+        content:
+          data.response ||
+          data.answer ||
+          "I apologize, but I couldn't process your request at the moment. Please try again.",
+        timestamp: new Date().toLocaleTimeString(),
+        isComplete: false,
+      };
+
+      setMessages((prev) => [...prev, aiMessage]);
+      setIsLoading(false);
+      setIsGenerating(true);
+
+      // Simulate typewriter effect completion
+      setTimeout(() => {
+        if (!abortController.signal.aborted) {
+          setIsGenerating(false);
+          setMessages((prev) => prev.map((msg) => 
+            msg.id === aiMessage.id ? { ...msg, isComplete: true } : msg
+          ));
+        }
+      }, aiMessage.content.length * 30 + 1000);
+
+    } catch (error:any) {
+      if (error.name === 'AbortError') {
+        console.log('Request aborted');
+        return;
+      }
+      
+      console.error('Request failed:', error);
+      const errorMessage = {
+        id: Date.now() + 1,
+        type: "ai",
+        content:
+          "I'm having trouble connecting to my analytics engine. Please try again.",
+        timestamp: new Date().toLocaleTimeString(),
+        isComplete: false,
+      };
+      setMessages((prev) => [...prev, errorMessage]);
+      setIsLoading(false);
+      setIsGenerating(true);
+
+      // Complete the error message
+      setTimeout(() => {
+        setIsGenerating(false);
+        setMessages((prev) => prev.map((msg) => 
+          msg.id === errorMessage.id ? { ...msg, isComplete: true } : msg
+        ));
+      }, 2000);
+    }
+  };
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
     }
+  };
+
+  const handleStopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    setIsGenerating(false);
+    setIsLoading(false);
+    
+    // Mark the last AI message as complete
+    setMessages((prev) => prev.map((msg, index) => 
+      index === prev.length - 1 && msg.type === 'ai' && !msg.isComplete
+        ? { ...msg, isComplete: true, content: msg.content + "\n\n[Response stopped by user]" }
+        : msg
+    ));
   };
 
   const ThinkingDots = () => (
@@ -335,18 +394,34 @@ const handleSendMessage = async () => {
               </div>
             ))}
             
-            {isLoading && (
+            {(isLoading || isGenerating) && (
               <div className="flex justify-start">
                 <div className="max-w-3xl mr-12">
                   <div className="flex items-start space-x-3">
                     <div className="flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-600 shadow-lg">
                       <Zap size={18} className="text-white animate-pulse" />
                     </div>
-                    <div className={`p-4 rounded-2xl ${isDarkMode
-                      ? 'bg-white/5 backdrop-blur-sm border border-white/10'
-                      : 'bg-white/80 backdrop-blur-sm border border-white/50'
-                    } shadow-lg`}>
-                      <ThinkingDots />
+                    <div className="flex items-center space-x-3">
+                      {isLoading && (
+                        <div className={`p-4 rounded-2xl ${isDarkMode
+                          ? 'bg-white/5 backdrop-blur-sm border border-white/10'
+                          : 'bg-white/80 backdrop-blur-sm border border-white/50'
+                        } shadow-lg`}>
+                          <ThinkingDots />
+                        </div>
+                      )}
+                      {(isLoading || isGenerating) && (
+                        <button
+                          onClick={handleStopGeneration}
+                          className={`p-2 rounded-xl ${isDarkMode
+                            ? 'bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/30'
+                            : 'bg-red-500/20 hover:bg-red-500/30 text-red-600 border border-red-500/30'
+                          } transition-all duration-200 hover:scale-105 backdrop-blur-sm`}
+                          title="Stop generation"
+                        >
+                          <Square size={16} />
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -357,7 +432,7 @@ const handleSendMessage = async () => {
           </div>
 
           {/* Suggested Questions */}
-          {messages.length === 1 && (
+          {messages.length === 1 && !isLoading && !isGenerating && (
             <div className="px-6 pb-4">
               <div className={`text-sm font-medium mb-3 ${isDarkMode ? 'text-gray-300' : 'text-gray-700'}`}>
                 Try asking about:
@@ -390,23 +465,30 @@ const handleSendMessage = async () => {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyPress={handleKeyPress}
-                placeholder="Ask me anything about Fetii's rideshare data..."
+                placeholder={isGenerating ? "Stop current response to ask a new question..." : "Ask me anything about Fetii's rideshare data..."}
                 className={`w-full p-4 pr-14 bg-transparent ${isDarkMode ? 'text-white placeholder-gray-400' : 'text-black placeholder-gray-600'} resize-none outline-none rounded-2xl min-h-[60px] max-h-[200px]`}
                 rows={1}
                 style={{ resize: 'none' }}
               />
               <button
-                onClick={handleSendMessage}
-                disabled={!inputValue.trim() || isLoading}
+                onClick={isGenerating ? handleStopGeneration : handleSendMessage}
+                disabled={(!inputValue.trim() && !isGenerating) || isLoading}
                 className={`absolute right-3 bottom-3 p-2 rounded-xl ${
-                  inputValue.trim() && !isLoading
+                  isGenerating
+                    ? 'bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
+                    : inputValue.trim() && !isLoading
                     ? 'bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white shadow-lg hover:shadow-xl transform hover:scale-105'
                     : isDarkMode 
                       ? 'bg-gray-700 text-gray-400' 
                       : 'bg-gray-200 text-gray-400'
                 } transition-all duration-200`}
+                title={isGenerating ? "Stop generation" : "Send message"}
               >
-                <Send size={18} className={inputValue.trim() && !isLoading ? 'animate-pulse' : ''} />
+                {isGenerating ? (
+                  <Square size={18} />
+                ) : (
+                  <Send size={18} className={inputValue.trim() && !isLoading ? 'animate-pulse' : ''} />
+                )}
               </button>
             </div>
           </div>
