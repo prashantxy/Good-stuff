@@ -19,7 +19,7 @@ app.use(cors({
   credentials: true,                     
 }));
 
-app.options("/query", cors()); 
+
 
 
 app.use(express.json({ limit: '10mb' }));
