@@ -9,18 +9,16 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-// Fixed: Remove trailing slash and add both with/without www
 const allowedOrigins = [
   'http://localhost:3001',
-  'https://fetiiai-hackathon.vercel.app',  // Removed trailing slash
-  'https://www.fetiiai-hackathon.vercel.app', // Added www variant just in case
-  'http://localhost:3000', // Added for local development
+  'https://fetiiai-hackathon.vercel.app',  
+  'https://www.fetiiai-hackathon.vercel.app', 
+  'http://localhost:3000', 
 ];
 
-// Enhanced CORS configuration
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests with no origin (mobile apps, Postman, etc.)
+    
     if (!origin) return callback(null, true);
     
     if (allowedOrigins.includes(origin)) {
@@ -33,16 +31,13 @@ app.use(cors({
   methods: ['GET', 'POST', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
-  // Add preflight response cache
-  maxAge: 86400 // 24 hours
+
+  maxAge: 86400 
 }));
 
-// Enhanced preflight handler - remove this problematic line
-// The main cors() middleware above already handles preflight requests
 
 app.use(express.json({ limit: '10mb' }));
 
-// Add a simple health check endpoint
 app.get('/', (req: Request, res: Response) => {
   res.json({ 
     message: 'Fetii AI Analytics Server is running',
@@ -263,7 +258,7 @@ function analyzeRidePatterns(trips: any[]) {
 
 app.post("/query", async (req: Request, res: Response) => {
   try {
-    console.log('📥 Query request from origin:', req.headers.origin);
+    console.log(' Query request from origin:', req.headers.origin);
     
     const { question, query } = req.body; 
     const userQuestion = question || query;
@@ -371,7 +366,7 @@ Answer comprehensively but concisely. Be conversational yet professional. Focus 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Fetii AI Analytics Server running on http://localhost:${PORT}`);
-  console.log(`✅ CORS enabled for origins: ${allowedOrigins.join(', ')}`);
-  console.log(`🤖 Ready to process intelligent rideshare analytics queries!`);
+  console.log(` Fetii AI Analytics Server running on http://localhost:${PORT}`);
+  console.log(` CORS enabled for origins: ${allowedOrigins.join(', ')}`);
+  console.log(` Ready to process intelligent rideshare analytics queries!`);
 });
