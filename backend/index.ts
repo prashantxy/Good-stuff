@@ -9,32 +9,59 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
+// Fixed: Remove trailing slash and add both with/without www
 const allowedOrigins = [
   'http://localhost:3001',
-  'https://fetiiai-hackathon.vercel.app/'
+  'https://fetiiai-hackathon.vercel.app',  // Removed trailing slash
+  'https://www.fetiiai-hackathon.vercel.app', // Added www variant just in case
+  'http://localhost:3000', // Added for local development
 ];
 
+// Enhanced CORS configuration
 app.use(cors({
   origin: function(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.log('❌ CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET','POST','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
-  credentials: true
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+  // Add preflight response cache
+  maxAge: 86400 // 24 hours
 }));
 
-app.options('*', cors({
-  origin: allowedOrigins,
-  methods: ['GET','POST','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization'],
-  credentials: true
-}));
+// Enhanced preflight handler - remove this problematic line
+// The main cors() middleware above already handles preflight requests
 
 app.use(express.json({ limit: '10mb' }));
+
+// Add a simple health check endpoint
+app.get('/', (req: Request, res: Response) => {
+  res.json({ 
+    message: 'Fetii AI Analytics Server is running',
+    timestamp: new Date().toISOString(),
+    cors: 'enabled'
+  });
+});
+
+// Add CORS headers manually as fallback
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+  }
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  next();
+});
 
 async function getSmartDataContext(question: string) {
   const questionLower = question.toLowerCase();
@@ -236,6 +263,8 @@ function analyzeRidePatterns(trips: any[]) {
 
 app.post("/query", async (req: Request, res: Response) => {
   try {
+    console.log('📥 Query request from origin:', req.headers.origin);
+    
     const { question, query } = req.body; 
     const userQuestion = question || query;
     
@@ -304,8 +333,8 @@ User Demographics Sample: ${JSON.stringify(users.slice(0, 5), null, 2)}
 Answer comprehensively but concisely. Be conversational yet professional. Focus on delivering maximum value through data-driven insights.
 `;
 
-    console.log(" Processing question:", userQuestion);
-    console.log(" Retrieved", trips.length, "trips and", users.length, "users");
+    console.log("✅ Processing question:", userQuestion);
+    console.log("📊 Retrieved", trips.length, "trips and", users.length, "users");
     
     const answer = await callGeminiWithRetry(enhancedPrompt);
 
@@ -331,7 +360,7 @@ Answer comprehensively but concisely. Be conversational yet professional. Focus 
     });
 
   } catch (err) {
-    console.error(" Error in /query:", err);
+    console.error("❌ Error in /query:", err);
     res.status(500).json({ 
       error: "Internal server error",
       message: "Failed to process your question. Please try again.",
@@ -342,6 +371,7 @@ Answer comprehensively but concisely. Be conversational yet professional. Focus 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(` Fetii AI Analytics Server running on http://localhost:${PORT}`);
-  console.log(` Ready to process intelligent rideshare analytics queries!`);
+  console.log(`🚀 Fetii AI Analytics Server running on http://localhost:${PORT}`);
+  console.log(`✅ CORS enabled for origins: ${allowedOrigins.join(', ')}`);
+  console.log(`🤖 Ready to process intelligent rideshare analytics queries!`);
 });
