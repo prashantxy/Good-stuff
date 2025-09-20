@@ -10,29 +10,51 @@ const prisma = new PrismaClient();
 
 
   
-const allowedOrigins = [
-  'https://fetiiai-hackathon.vercel.app', 
-  'http://localhost:3001',              
-  'https://good-stuff-2php.onrender.com'   
-];
+// Replace your current CORS middleware with this:
 
 app.use((req: Request, res: Response, next: NextFunction) => {
   const origin = req.headers.origin;
   
+  console.log('🔍 CORS Debug - Origin:', origin);
+  console.log('🔍 CORS Debug - Method:', req.method);
+  console.log('🔍 CORS Debug - URL:', req.url);
+  
+  // Always set CORS headers for all requests
   if (origin && allowedOrigins.includes(origin)) {
+    console.log('✅ Origin allowed:', origin);
     res.header('Access-Control-Allow-Origin', origin);
-    res.header('Access-Control-Allow-Credentials', 'true');
-    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-    res.header('Access-Control-Expose-Headers', '*');
+  } else if (origin) {
+    console.log('❌ Origin not in list, but setting anyway:', origin);
+    // For debugging, allow the origin anyway
+    res.header('Access-Control-Allow-Origin', origin);
+  } else {
+    console.log('⚠️ No origin header, setting wildcard');
+    res.header('Access-Control-Allow-Origin', '*');
   }
+  
+  // Always set these headers
+  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS,PUT,DELETE');
+  res.header('Access-Control-Allow-Headers', 'Origin,X-Requested-With,Content-Type,Accept,Authorization,Cache-Control');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400');
+  
+  console.log('🔧 Set CORS headers:', {
+    origin: res.get('Access-Control-Allow-Origin'),
+    methods: res.get('Access-Control-Allow-Methods'),
+    headers: res.get('Access-Control-Allow-Headers')
+  });
 
   if (req.method === 'OPTIONS') {
-    return res.status(200).end();
+    console.log('✅ Handling OPTIONS preflight request');
+    return res.status(204).end();
   }
 
   next();
 });
+
+// Add body parsing AFTER CORS
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 
 async function getSmartDataContext(question: string) {
