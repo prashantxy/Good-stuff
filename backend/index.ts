@@ -2,7 +2,7 @@ import express, { type Request, type Response } from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
-import { callGeminiWithRetry } from "./utils/gemini.js";
+import { callGeminiWithRetry } from "./utils/gemini.ts";
 
 dotenv.config();
 
@@ -14,12 +14,13 @@ app.use(cors({
     'http://localhost:3001', 
     'https://fetiiai-hackathon.vercel.app'
   ],
-  methods: ['GET', 'POST', 'OPTIONS'],   // include OPTIONS
+  methods: ['GET', 'POST', 'OPTIONS'],   
   allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,                     // optional if you want cookies/auth headers
+  credentials: true,                     
 }));
 
-app.use()
+app.options("/query", cors()); 
+
 
 app.use(express.json({ limit: '10mb' }));
 
@@ -324,39 +325,6 @@ Answer comprehensively but concisely. Be conversational yet professional. Focus 
       message: "Failed to process your question. Please try again.",
       timestamp: new Date().toISOString()
     });
-  }
-});
-
-app.get("/", (_req: Request, res: Response) => {
-  res.json({
-    status: " Fetii AI Analytics Server is running!",
-    version: "2.0.0",
-    endpoints: {
-      query: "POST /query - Ask questions about rideshare data",
-      health: "GET / - Health check"
-    },
-    timestamp: new Date().toISOString()
-  });
-});
-
-app.get("/analytics", async (_req: Request, res: Response) => {
-  try {
-    const { trips, users, tripStats } = await getSmartDataContext("general analytics");
-    const analytics = generateAnalyticsContext(trips, users, tripStats);
-    
-    res.json({
-      success: true,
-      analytics,
-      metadata: {
-        dataPoints: trips.length,
-        users: users.length,
-        totalTrips: tripStats._count.id,
-        lastUpdated: new Date().toISOString()
-      }
-    });
-  } catch (error) {
-    console.error("Error fetching analytics:", error);
-    res.status(500).json({ error: "Failed to fetch analytics" });
   }
 });
 
