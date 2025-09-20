@@ -111,17 +111,13 @@ const FetiiChatbot = () => {
     setIsLoading(true);
 
     try {
-     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
-    const response = await fetch(`${backendUrl}/query`, {  
-     method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-  },
-  body: JSON.stringify({ query: inputValue }),
+     const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
+const response = await fetch(`${backendUrl}/query`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ query: inputValue })
 });
-
-
-      const data = await response.json();
+const data = await response.json();
 
       const aiMessage = {
         id: Date.now() + 1,
