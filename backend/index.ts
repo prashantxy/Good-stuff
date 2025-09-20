@@ -9,19 +9,30 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-app.options("*", cors({
-  origin: [
-    'http://localhost:3001', 
-    'https://fetiiai-hackathon.vercel.app'
-  ],
-  methods: ['GET', 'POST', 'OPTIONS'],   
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,                     
+const allowedOrigins = [
+  'http://localhost:3001',
+  'https://fetiiai-hackathon.vercel.app'
+];
+
+app.use(cors({
+  origin: function(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  methods: ['GET','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: true
 }));
 
-
-
-
+app.options('*', cors({
+  origin: allowedOrigins,
+  methods: ['GET','POST','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization'],
+  credentials: true
+}));
 
 app.use(express.json({ limit: '10mb' }));
 
