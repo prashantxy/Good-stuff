@@ -8,58 +8,32 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-// NUCLEAR CORS SOLUTION - This bypasses all the bullshit
-const allowAllCORS = (req: Request, res: Response, next: NextFunction) => {
-  const origin = req.headers.origin || req.headers.referer || '*';
+
   
-  // Set ALL possible CORS headers
-  res.header('Access-Control-Allow-Origin', origin === '*' ? '*' : origin);
-  res.header('Access-Control-Allow-Methods', '*');
-  res.header('Access-Control-Allow-Headers', '*');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  res.header('Access-Control-Max-Age', '86400');
-  res.header('Access-Control-Expose-Headers', '*');
+const allowedOrigins = [
+  'https://fetiiai-hackathon.vercel.app', 
+  'http://localhost:3001',              
+  'https://good-stuff-2php.onrender.com'   
+];
+
+app.use((req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin;
   
-  // Handle preflight immediately
-  if (req.method === 'OPTIONS') {
-    console.log(`✅ PREFLIGHT: ${req.method} ${req.url} from ${origin}`);
-    res.status(200).end();
-    return;
+  if (origin && allowedOrigins.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+    res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
+    res.header('Access-Control-Expose-Headers', '*');
   }
-  
-  console.log(`🚀 REQUEST: ${req.method} ${req.url} from ${origin}`);
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   next();
-};
-
-// Apply NUCLEAR CORS first - before everything else
-app.use(allowAllCORS);
-
-// Trust proxy (important for Render)
-app.set('trust proxy', 1);
-
-// Body parsing
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-
-// Health check
-app.get('/', (req: Request, res: Response) => {
-  res.json({ 
-    message: '🚀 Fetii AI Server - CORS NUCLEAR MODE',
-    timestamp: new Date().toISOString(),
-    headers: req.headers,
-    origin: req.headers.origin
-  });
 });
 
-// Test endpoint
-app.post('/test', (req: Request, res: Response) => {
-  res.json({
-    message: '✅ CORS is working!',
-    body: req.body,
-    headers: req.headers,
-    timestamp: new Date().toISOString()
-  });
-});
 
 async function getSmartDataContext(question: string) {
   const questionLower = question.toLowerCase();
