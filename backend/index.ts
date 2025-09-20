@@ -1,5 +1,4 @@
-import express, { type Request, type Response } from "express";
-import cors from "cors";
+import express, { type Request, type Response, type NextFunction } from "express";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
 import { callGeminiWithRetry } from "./utils/gemini.ts";
@@ -9,53 +8,57 @@ dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
 
-const allowedOrigins = [
-  'http://localhost:3001',
-  'https://fetiiai-hackathon.vercel.app',  
-  'https://www.fetiiai-hackathon.vercel.app', 
-  'http://localhost:3000', 
-];
+// NUCLEAR CORS SOLUTION - This bypasses all the bullshit
+const allowAllCORS = (req: Request, res: Response, next: NextFunction) => {
+  const origin = req.headers.origin || req.headers.referer || '*';
+  
+  // Set ALL possible CORS headers
+  res.header('Access-Control-Allow-Origin', origin === '*' ? '*' : origin);
+  res.header('Access-Control-Allow-Methods', '*');
+  res.header('Access-Control-Allow-Headers', '*');
+  res.header('Access-Control-Allow-Credentials', 'true');
+  res.header('Access-Control-Max-Age', '86400');
+  res.header('Access-Control-Expose-Headers', '*');
+  
+  // Handle preflight immediately
+  if (req.method === 'OPTIONS') {
+    console.log(`✅ PREFLIGHT: ${req.method} ${req.url} from ${origin}`);
+    res.status(200).end();
+    return;
+  }
+  
+  console.log(`🚀 REQUEST: ${req.method} ${req.url} from ${origin}`);
+  next();
+};
 
-app.use(cors({
-  origin: function(origin, callback) {
-    
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.log('❌ CORS blocked origin:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
+// Apply NUCLEAR CORS first - before everything else
+app.use(allowAllCORS);
 
-  maxAge: 86400 
-}));
+// Trust proxy (important for Render)
+app.set('trust proxy', 1);
 
-
+// Body parsing
 app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true }));
 
+// Health check
 app.get('/', (req: Request, res: Response) => {
   res.json({ 
-    message: 'Fetii AI Analytics Server is running',
+    message: '🚀 Fetii AI Server - CORS NUCLEAR MODE',
     timestamp: new Date().toISOString(),
-    cors: 'enabled'
+    headers: req.headers,
+    origin: req.headers.origin
   });
 });
 
-// Add CORS headers manually as fallback
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-  if (origin && allowedOrigins.includes(origin)) {
-    res.header('Access-Control-Allow-Origin', origin);
-  }
-  res.header('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type,Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  next();
+// Test endpoint
+app.post('/test', (req: Request, res: Response) => {
+  res.json({
+    message: '✅ CORS is working!',
+    body: req.body,
+    headers: req.headers,
+    timestamp: new Date().toISOString()
+  });
 });
 
 async function getSmartDataContext(question: string) {
@@ -258,7 +261,7 @@ function analyzeRidePatterns(trips: any[]) {
 
 app.post("/query", async (req: Request, res: Response) => {
   try {
-    console.log(' Query request from origin:', req.headers.origin);
+    console.log('📥 Query request from:', req.headers.origin);
     
     const { question, query } = req.body; 
     const userQuestion = question || query;
@@ -366,7 +369,7 @@ Answer comprehensively but concisely. Be conversational yet professional. Focus 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(` Fetii AI Analytics Server running on http://localhost:${PORT}`);
-  console.log(` CORS enabled for origins: ${allowedOrigins.join(', ')}`);
-  console.log(` Ready to process intelligent rideshare analytics queries!`);
+  console.log(`🚀 Fetii AI Server running on port ${PORT}`);
+  console.log(`🔥 NUCLEAR CORS MODE ACTIVATED - All origins allowed`);
+  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
