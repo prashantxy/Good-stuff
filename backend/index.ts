@@ -326,7 +326,7 @@ User Demographics Sample: ${JSON.stringify(users.slice(0, 5), null, 2)}
 • Include relevant trends or patterns
 • End with actionable insights or recommendations
 
-Answer comprehensively but concisely. Be conversational yet professional. Focus on delivering maximum value through data-driven insights.
+Answer comprehensively but concisely. Be conversational yet professional. Focus on delivering maximum value through data-driven insights depending on the question.
 `;
 
     console.log("✅ Processing question:", userQuestion);
