@@ -95,56 +95,70 @@ const FetiiChatbot = () => {
     "Which areas have the highest demand?",
   ];
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim()) return;
 
-    const userMessage = {
-      id: Date.now(),
-      type: "user",
-      content: inputValue,
-      timestamp: new Date().toLocaleTimeString(),
-      isComplete: true,
-    };
+const handleSendMessage = async () => {
+  if (!inputValue.trim()) return;
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputValue("");
-    setIsLoading(true);
+  const userMessage = {
+    id: Date.now(),
+    type: "user",
+    content: inputValue,
+    timestamp: new Date().toLocaleTimeString(),
+    isComplete: true,
+  };
 
-    try {
-     const backendUrl = (process.env.NEXT_PUBLIC_BACKEND_URL || "").replace(/\/$/, "");
-const response = await fetch(`${backendUrl}/query`, {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({ query: inputValue })
-});
-const data = await response.json();
+  setMessages((prev) => [...prev, userMessage]);
+  setInputValue("");
+  setIsLoading(true);
 
-      const aiMessage = {
-        id: Date.now() + 1,
-        type: "ai",
-        content:
-          data.response ||
-          data.answer ||
-          "I apologize, but I couldn't process your request at the moment. Please try again.",
-        timestamp: new Date().toLocaleTimeString(),
-        isComplete: false,
-      };
+  try {
+    console.log('Sending request via Vercel proxy...');
+    
+    const response = await fetch('/api/query', {
+      method: "POST",
+      headers: { 
+        "Content-Type": "application/json" 
+      },
+      body: JSON.stringify({ query: inputValue })
+    });
 
-      setMessages((prev) => [...prev, aiMessage]);
-    } catch (_error) {
-      const errorMessage = {
-        id: Date.now() + 1,
-        type: "ai",
-        content:
-          "I'm having trouble connecting to my analytics engine. Please try again.",
-        timestamp: new Date().toLocaleTimeString(),
-        isComplete: false,
-      };
-      setMessages((prev) => [...prev, errorMessage]);
+    console.log('Response status:', response.status);
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`HTTP error! status: ${response.status}, message: ${errorData.error || 'Unknown error'}`);
     }
 
-    setIsLoading(false);
-  };
+    const data = await response.json();
+    console.log('Data received successfully');
+
+    const aiMessage = {
+      id: Date.now() + 1,
+      type: "ai",
+      content:
+        data.response ||
+        data.answer ||
+        "I apologize, but I couldn't process your request at the moment. Please try again.",
+      timestamp: new Date().toLocaleTimeString(),
+      isComplete: false,
+    };
+
+    setMessages((prev) => [...prev, aiMessage]);
+  } catch (error) {
+    console.error('Request failed:', error);
+    const errorMessage = {
+      id: Date.now() + 1,
+      type: "ai",
+      content:
+        "I'm having trouble connecting to my analytics engine. Please try again.",
+      timestamp: new Date().toLocaleTimeString(),
+      isComplete: false,
+    };
+    setMessages((prev) => [...prev, errorMessage]);
+  }
+
+  setIsLoading(false);
+};
 
   const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
