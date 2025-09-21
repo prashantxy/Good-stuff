@@ -43,5 +43,5 @@ The project uses Fetii’s Austin, TX rideshare dataset (`FetiiAI_Data_Austin.xl
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/your-username/fetii-ai.git
+git clone https://github.com/prashantxy/Good-stuff.git
 cd fetii-ai
