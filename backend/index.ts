@@ -329,8 +329,6 @@ User Demographics Sample: ${JSON.stringify(users.slice(0, 5), null, 2)}
 Answer comprehensively but concisely. Be conversational yet professional. Focus on delivering maximum value through data-driven insights depending on the question.
 `;
 
-    console.log("✅ Processing question:", userQuestion);
-    console.log("📊 Retrieved", trips.length, "trips and", users.length, "users");
     
     const answer = await callGeminiWithRetry(enhancedPrompt);
 
@@ -356,7 +354,7 @@ Answer comprehensively but concisely. Be conversational yet professional. Focus 
     });
 
   } catch (err) {
-    console.error("❌ Error in /query:", err);
+    console.error(" Error in /query:", err);
     res.status(500).json({ 
       error: "Internal server error",
       message: "Failed to process your question. Please try again.",
@@ -367,7 +365,5 @@ Answer comprehensively but concisely. Be conversational yet professional. Focus 
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Fetii AI Server running on port ${PORT}`);
-  console.log(`🔥 NUCLEAR CORS MODE ACTIVATED - All origins allowed`);
-  console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log("running");
 });

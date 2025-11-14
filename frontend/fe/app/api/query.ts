@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } catch (error) {
     console.error('Proxy error:', error);
     return res.status(500).json({ 
-      error: 'Request failed',
+      error: 'Request failed try again',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }
